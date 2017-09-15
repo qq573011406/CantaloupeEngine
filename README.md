@@ -1,2 +1,2 @@
-# CantaloupeEngine
+# OnionEngine
 a crossplatform game engine
