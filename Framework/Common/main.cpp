@@ -3,20 +3,20 @@
 using namespace Onion;
 namespace Onion
 {
-	extern IApplication* gApp;
+	extern IApplication* g_pApp;
 }
 
 int main(int argc,char** argv)
 {
 	int ret;
-	ret = gApp->Initialize();
+	ret = g_pApp->Initialize();
 	if(ret!=0){
 		printf("App Initialize failed,will exit now.");
 		return ret;
 	}
-	while(!gApp->IsQuit()){
-		gApp->Tick();
+	while(!g_pApp->IsQuit()){
+		g_pApp->Tick();
 	}
-	gApp->Finalize();
+	g_pApp->Finalize();
 	return 0;
 }

@@ -30,9 +30,9 @@ namespace Onion {
         void* Allocate(size_t size);
         void  Free(void* p, size_t size);
     private:
-        static size_t*        m_pBlockSizeLookup;
-        static Allocator*     m_pAllocators;
+        size_t*        m_pBlockSizeLookup;
+        Allocator*     m_pAllocators;
     private:
-        static Allocator* LookUpAllocator(size_t size);
+        Allocator* LookUpAllocator(size_t size);
     };
 }
