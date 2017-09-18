@@ -16,11 +16,12 @@ namespace Onion
     
     private:
         HRESULT InitD3D();
+		HRESULT InitVB();
         void ClearupD3D();
         void Render();
     private:
         LPDIRECT3D9 m_pD3D;
         LPDIRECT3DDEVICE9 m_pD3DDevice;
-
+		LPDIRECT3DVERTEXBUFFER9 m_pVB; // Buffer to hold vertices
     };
 }

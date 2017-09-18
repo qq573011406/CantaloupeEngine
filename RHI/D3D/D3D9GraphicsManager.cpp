@@ -16,6 +16,15 @@ namespace Onion
             (*ppInterfaceToRelease) = nullptr;
         }
     }
+
+
+	struct CUSTOMVERTEX
+	{
+		FLOAT x, y, z, rhw;
+		DWORD color;
+	};
+	// Our custom FVF, which describes our custom vertex structure
+	#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZRHW|D3DFVF_DIFFUSE)
 }
 
 Onion::D3D9GraphicsManager::D3D9GraphicsManager():
@@ -77,13 +86,41 @@ HRESULT Onion::D3D9GraphicsManager::InitD3D()
         {
         return E_FAIL;
     }
-    return S_OK;
+    return InitVB();
+}
+
+HRESULT Onion::D3D9GraphicsManager::InitVB()
+{
+	// Initialize three vertices for rendering a triangle
+	CUSTOMVERTEX vertices[] =
+	{
+		{ 150.0f,  50.0f, 0.5f, 1.0f, 0xffff0000, }, // x, y, z, rhw, color
+		{ 250.0f, 250.0f, 0.5f, 1.0f, 0xff00ff00, },
+		{ 50.0f, 250.0f, 0.5f, 1.0f, 0xff00ffff, },
+	};
+
+	if (FAILED(m_pD3DDevice->CreateVertexBuffer(3*sizeof(CUSTOMVERTEX),
+		0,
+		D3DFVF_CUSTOMVERTEX,
+		D3DPOOL_DEFAULT,
+		&m_pVB,NULL)))
+	{
+		return E_FAIL;
+	}
+
+	VOID* pVertices = nullptr;
+	if (FAILED(m_pVB->Lock(0, sizeof(vertices), (void**)&pVertices, 0)))
+		return E_FAIL;
+	memcpy(pVertices, vertices, sizeof(vertices));
+	m_pVB->Unlock();
+	return S_OK;
 }
 
 
 
 void Onion::D3D9GraphicsManager::ClearupD3D()
 {
+	SafeRelease(&m_pVB);
     SafeRelease(&m_pD3DDevice);
     SafeRelease(&m_pD3D);
 }
@@ -96,7 +133,9 @@ void Onion::D3D9GraphicsManager::Render()
     if( SUCCEEDED( m_pD3DDevice->BeginScene() ) )
     {
         // Rendering of scene objects can happen here
-
+		m_pD3DDevice->SetStreamSource(0, m_pVB, 0, sizeof(CUSTOMVERTEX));
+		m_pD3DDevice->SetFVF(D3DFVF_CUSTOMVERTEX);
+		m_pD3DDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);
         // End the scene
         m_pD3DDevice->EndScene();
     }
