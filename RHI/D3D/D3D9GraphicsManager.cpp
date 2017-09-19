@@ -20,11 +20,11 @@ namespace Onion
 
 	struct CUSTOMVERTEX
 	{
-		FLOAT x, y, z, rhw;
+		FLOAT x, y, z;
 		DWORD color;
 	};
 	// Our custom FVF, which describes our custom vertex structure
-	#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZRHW|D3DFVF_DIFFUSE)
+#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZ|D3DFVF_DIFFUSE)
 
 }
 
@@ -100,9 +100,9 @@ HRESULT Onion::D3D9GraphicsManager::InitVB()
 	// Initialize three vertices for rendering a triangle
 	CUSTOMVERTEX vertices[] =
 	{
-		{ 150.0f,  50.0f, 0.5f, 1.0f, 0xffff0000, }, // x, y, z, rhw, color
-		{ 250.0f, 250.0f, 0.5f, 1.0f, 0xff00ff00, },
-		{ 50.0f, 250.0f, 0.5f, 1.0f, 0xff00ffff, },
+		{ -1.0f,-1.0f, 0.0f, 0xffff0000, },
+		{ 1.0f,-1.0f, 0.0f, 0xff0000ff, },
+		{ 0.0f, 1.0f, 0.0f, 0xffffffff, },
 	};
 
 	if (FAILED(m_pD3DDevice->CreateVertexBuffer(3 * sizeof(CUSTOMVERTEX),
@@ -153,20 +153,17 @@ void Onion::D3D9GraphicsManager::SetupMatrices()
 	FLOAT fAngle = iTime * (2.0f * D3DX_PI) / 1000.0f;
 	D3DXMatrixRotationY(&matWorld, fAngle);
 	//m_pD3DDevice->SetTransform(D3DTS_WORLD, &matWorld);
-	HRESULT hr = m_pEffect->SetMatrix("g_mWorld", &matWorld);
-
+	
 	// Set up our view matrix. A view matrix can be defined given an eye point,
 	// a point to lookat, and a direction for which way is up. Here, we set the
 	// eye five units back along the z-axis and up three units, look at the
 	// origin, and define "up" to be in the y-direction.
-	// ¹Û²ì¾ØÕó  
-	D3DXVECTOR3 vEyePt(15.0f, 3.0f, 0.0f);
-	D3DXVECTOR3 vLookatPt(0.0f, 3.0f, 0.0f);
+	D3DXVECTOR3 vEyePt(0.0f, 3.0f, -5.0f);
+	D3DXVECTOR3 vLookatPt(0.0f, 0.0f, 0.0f);
 	D3DXVECTOR3 vUpVec(0.0f, 1.0f, 0.0f);
 	D3DXMATRIXA16 matView;
 	D3DXMatrixLookAtLH(&matView, &vEyePt, &vLookatPt, &vUpVec);
 	//m_pD3DDevice->SetTransform(D3DTS_VIEW, &matView);
-	hr = m_pEffect->SetMatrix("g_mView", &matView);
 
 	// For the projection matrix, we set up a perspective transform (which
 	// transforms geometry from 3D view space to 2D viewport space, with
@@ -175,9 +172,14 @@ void Onion::D3D9GraphicsManager::SetupMatrices()
 	// the aspect ratio, and the near and far clipping planes (which define at
 	// what distances geometry should be no longer be rendered).
 	D3DXMATRIXA16 matProj;
-	D3DXMatrixPerspectiveFovLH(&matProj, D3DX_PI / 4, 64.0 / 41.0f, 1.0, 100.0f);
+	D3DXMatrixPerspectiveFovLH(&matProj, D3DX_PI / 4, 1.0f, 1.0f, 100.0f);
 	//m_pD3DDevice->SetTransform(D3DTS_PROJECTION, &matProj);
-	hr = m_pEffect->SetMatrix("g_mView", &matProj);
+
+	D3DXMATRIXA16 wvp = matWorld * matView * matProj;
+	D3DXHANDLE WVPMatrixHandle = m_pEffect->GetParameterByName(0, "g_mvp");
+
+	HRESULT hr = m_pEffect->SetMatrix(WVPMatrixHandle, &wvp);
+
 
 }
 
@@ -196,7 +198,7 @@ void Onion::D3D9GraphicsManager::Render()
 {
 
 	if (m_pD3DDevice == nullptr) return;
-	m_pD3DDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 255), 1.0f, 0);
+	m_pD3DDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	HRESULT hr = S_OK;
     if( SUCCEEDED( m_pD3DDevice->BeginScene() ) )

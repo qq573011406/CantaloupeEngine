@@ -10,29 +10,26 @@
 //--------------------------------------------------------------------------------------
 // Global variables
 //--------------------------------------------------------------------------------------
-shared float4x4 g_mWorld;                     // World view matrix
-shared float4x4 g_mView; // World * View * Projection matrix
-shared float4x4 g_mProj; // World * View * Projection matrix
+matrix g_mvp;
 
 
 struct VS_INPUT
 {
-    float4 position:POSITION;
+    vector position:POSITION;
     float4 color:COLOR0;  
 };
 
 struct VS_OUTPUT
 {
-    float4 position:POSITION;
+    vector position:POSITION;
+    float4 color:COLOR0;
 };
 
 VS_OUTPUT VS_Main(VS_INPUT input)
 {
     VS_OUTPUT output = (VS_OUTPUT)0;
-    //output.position = mul(input.position,g_mWorld);
-    //output.position = mul(output.position,g_mView);
-    //output.position = mul(output.position,g_mProj);
-    output.position = input.position;
+    output.position = mul(input.position,g_mvp);
+    output.color = input.color;
     return output;
 }
 
@@ -49,7 +46,7 @@ PS_OUTPUT PS_Main(PS_INPUT input)
 {
 
     PS_OUTPUT output = (PS_OUTPUT)0;
-    output.color = float4(1,1,1,1);
+    output.color = input.color;
     return output;
 }
 
