@@ -1,6 +1,6 @@
 #include "D3D9GraphicsManager.hpp"
 #include "WindowsApplication.hpp"
-
+#include <mmsystem.h>
 using namespace Onion;
 namespace Onion
 {
@@ -20,11 +20,11 @@ namespace Onion
 
 	struct CUSTOMVERTEX
 	{
-		FLOAT x, y, z, rhw;
+		FLOAT x, y, z;
 		DWORD color;
 	};
 	// Our custom FVF, which describes our custom vertex structure
-	#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZRHW|D3DFVF_DIFFUSE)
+	#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZ|D3DFVF_DIFFUSE)
 }
 
 Onion::D3D9GraphicsManager::D3D9GraphicsManager():
@@ -86,6 +86,10 @@ HRESULT Onion::D3D9GraphicsManager::InitD3D()
         {
         return E_FAIL;
     }
+
+	m_pD3DDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+	m_pD3DDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
+
     return InitVB();
 }
 
@@ -94,10 +98,11 @@ HRESULT Onion::D3D9GraphicsManager::InitVB()
 	// Initialize three vertices for rendering a triangle
 	CUSTOMVERTEX vertices[] =
 	{
-		{ 150.0f,  50.0f, 0.5f, 1.0f, 0xffff0000, }, // x, y, z, rhw, color
-		{ 250.0f, 250.0f, 0.5f, 1.0f, 0xff00ff00, },
-		{ 50.0f, 250.0f, 0.5f, 1.0f, 0xff00ffff, },
+		{ -1.0f,-1.0f, 0.0f, 0xffff0000, },
+		{ 1.0f,-1.0f, 0.0f, 0xff0000ff, },
+		{ 0.0f, 1.0f, 0.0f, 0xffffffff, },
 	};
+
 
 	if (FAILED(m_pD3DDevice->CreateVertexBuffer(3*sizeof(CUSTOMVERTEX),
 		0,
@@ -114,6 +119,12 @@ HRESULT Onion::D3D9GraphicsManager::InitVB()
 	memcpy(pVertices, vertices, sizeof(vertices));
 	m_pVB->Unlock();
 	return S_OK;
+}
+
+void Onion::D3D9GraphicsManager::SetupMatrices()
+{
+	// For our world matrix, we will just rotate the object about the y-axis.
+	//D3DXMATRIXA16 matWorld;
 }
 
 

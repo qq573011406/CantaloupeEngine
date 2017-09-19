@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <d3d9.h>
+#include <d3dx9.h>
 #include <strsafe.h>
 #include "GraphicsManager.hpp"
 
@@ -17,6 +18,7 @@ namespace Onion
     private:
         HRESULT InitD3D();
 		HRESULT InitVB();
+		void SetupMatrices();
         void ClearupD3D();
         void Render();
     private:
