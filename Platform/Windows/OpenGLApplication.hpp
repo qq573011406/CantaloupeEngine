@@ -12,7 +12,9 @@ namespace Onion
         virtual int Initialize();
         virtual void Finalize();
         virtual void Tick();
+		void SwapBuffer();
     private:
         HGLRC m_RenderContext;
+		HDC m_Hdc;
     };
 }

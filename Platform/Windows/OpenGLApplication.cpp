@@ -35,6 +35,7 @@ int Onion::OpenGLApplication::Initialize()
 
     HWND hWnd = reinterpret_cast<WindowsApplication*>(g_pApp)->GetMainWindow();
     HDC  hDC  = GetDC(hWnd);
+	m_Hdc = hDC;
     // Set a temporary default pixel format.
     int nPixelFormat = ChoosePixelFormat(hDC, &pfd);
     if (nPixelFormat == 0) return -1;  
@@ -76,4 +77,9 @@ void Onion::OpenGLApplication::Finalize()
 void Onion::OpenGLApplication::Tick()
 {
     WindowsApplication::Tick();
+}
+
+void Onion::OpenGLApplication::SwapBuffer()
+{
+	SwapBuffers(m_Hdc);
 }

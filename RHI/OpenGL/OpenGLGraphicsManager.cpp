@@ -1,8 +1,14 @@
 #include <stdio.h>
 #include "glad/glad.h"
+#include "OpenGLApplication.hpp"
 #include "OpenGLGraphicsManager.hpp"
 
 using namespace Onion;
+
+namespace Onion
+{
+	extern IApplication* g_pApp;
+}
 
 extern struct gladGLversionStruct GLVersion;
 
@@ -43,5 +49,9 @@ void Onion::OpenGLGraphicsManager::Finalize()
 
 void Onion::OpenGLGraphicsManager::Tick()
 {
-    
+	OpenGLApplication* app = reinterpret_cast<OpenGLApplication*>(g_pApp);
+
+	glClearColor(0, 0, 0, 1);
+	glClear(GL_COLOR_BUFFER_BIT);
+	app->SwapBuffer();
 }
