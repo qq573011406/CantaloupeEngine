@@ -17,7 +17,7 @@ namespace Onion
     
     private:
         HRESULT InitD3D();
-		HRESULT InitVB();
+		HRESULT InitGeometry();
 		void SetupMatrices();
         void ClearupD3D();
         void Render();
