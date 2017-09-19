@@ -17,6 +17,7 @@ namespace Onion
     
     private:
         HRESULT InitD3D();
+		HRESULT InitVB();
 		HRESULT InitGeometry();
 		void SetupMatrices();
         void ClearupD3D();
@@ -25,5 +26,7 @@ namespace Onion
         LPDIRECT3D9 m_pD3D;
         LPDIRECT3DDEVICE9 m_pD3DDevice;
 		LPDIRECT3DVERTEXBUFFER9 m_pVB; // Buffer to hold vertices
+		ID3DXEffect* m_pEffect;
+		LPD3DXBUFFER m_pCode;
     };
 }
