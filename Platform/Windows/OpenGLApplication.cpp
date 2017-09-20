@@ -32,6 +32,7 @@ int Onion::OpenGLApplication::Initialize()
     pfd.cColorBits = m_Config.redBits + m_Config.greenBits + m_Config.blueBits + m_Config.alphaBits;
     pfd.cDepthBits = m_Config.depthBits;
     pfd.iLayerType = PFD_MAIN_PLANE;
+	
 
     HWND hWnd = reinterpret_cast<WindowsApplication*>(g_pApp)->GetMainWindow();
     HDC  hDC  = GetDC(hWnd);

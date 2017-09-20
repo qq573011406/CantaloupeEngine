@@ -1,6 +1,6 @@
 #pragma once
+#include "glad/glad.h"
 #include "GraphicsManager.hpp"
-
 namespace Onion {
     class OpenGLGraphicsManager : public GraphicsManager
     {
@@ -9,6 +9,14 @@ namespace Onion {
         virtual void Finalize();
 
         virtual void Tick();
+	private:
+		int InitShader();
+		void InitVB();
+		void Render();
     private:
+		GLuint m_ShaderProgram;
+		GLuint m_VAO;
+		GLuint m_VBO;
+		GLuint m_EBO;
     };
 }

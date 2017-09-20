@@ -1,5 +1,8 @@
 #include <stdio.h>
-#include "glad/glad.h"
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <iostream>
 #include "OpenGLApplication.hpp"
 #include "OpenGLGraphicsManager.hpp"
 
@@ -23,7 +26,6 @@ int Onion::OpenGLGraphicsManager::Initialize()
     } else {
         result = 0;
         printf("OpenGL Version %d.%d loaded\n", GLVersion.major, GLVersion.minor);
-
         if (GLAD_GL_VERSION_3_0) {
             // Set the depth buffer to be entirely cleared to 1.0 values.
             glClearDepth(1.0f);
@@ -39,19 +41,156 @@ int Onion::OpenGLGraphicsManager::Initialize()
             glCullFace(GL_BACK);
         }
     }
+	
+    
+	glViewport(0, 0, 960, 540);
 
+	if (result != 0)return result;
+	InitVB();
+	result = InitShader();
+	if (result != 0)return result;
     return result;
 }
 
 void Onion::OpenGLGraphicsManager::Finalize()
 {
+	glDeleteVertexArrays(1,&m_VAO);
+	glDeleteBuffers(1, &m_VBO);
+	glDeleteBuffers(1, &m_EBO);
+	glDeleteProgram(m_ShaderProgram);
 }
 
 void Onion::OpenGLGraphicsManager::Tick()
 {
 	OpenGLApplication* app = reinterpret_cast<OpenGLApplication*>(g_pApp);
-
-	glClearColor(0, 0, 0, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
+	this->Render();
 	app->SwapBuffer();
 }
+
+int Onion::OpenGLGraphicsManager::InitShader()
+{
+
+	std::string vertexPath = R"(Assets\Shader\diffuse_vs.glsl)";
+	std::string fragmentPath = R"(Assets\Shader\diffuse_ps.glsl)";
+
+	// 1.从文件路径中获取顶点/片段着色器
+	std::string vertexCode;
+	std::string fragmentCode;
+	std::ifstream vShaderFile;
+	std::ifstream fShaderFile;
+	try
+	{
+		// 打开文件
+		vShaderFile.open(vertexPath);
+		fShaderFile.open(fragmentPath);
+		std::stringstream vShaderStream, fShaderStream;
+		vShaderStream << vShaderFile.rdbuf();
+		fShaderStream << fShaderFile.rdbuf();
+
+		vShaderFile.close();
+		fShaderFile.close();
+
+		vertexCode = vShaderStream.str();
+		fragmentCode = fShaderStream.str();
+	}
+	catch (std::ifstream::failure e)
+	{
+		std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
+		return -1;
+	}
+
+	const GLchar* vShaderCode = vertexCode.c_str();
+	const GLchar* fShaderCode = fragmentCode.c_str();
+
+	GLuint vertex, fragment;
+	GLint sucess;
+	GLchar infoLog[512];
+
+	// 顶点着色器
+	vertex = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertex, 1, &vShaderCode, NULL);
+	glCompileShader(vertex);
+
+	glGetShaderiv(vertex, GL_COMPILE_STATUS, &sucess);
+	if (!sucess) {
+		glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+
+	// 片段着色器
+	fragment = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragment, 1, &fShaderCode, NULL);
+	glCompileShader(fragment);
+
+	glGetShaderiv(fragment, GL_COMPILE_STATUS, &sucess);
+	if (!sucess) {
+		glGetShaderInfoLog(fragment, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::fragment::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+
+	GLuint shaderProgram;
+	shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertex);
+	glAttachShader(shaderProgram, fragment);
+	glLinkProgram(shaderProgram);
+
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &sucess);
+	if (!sucess) {
+		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		std::cout << "ERROR::ShaderProgram::LINK_FAILED\n" << infoLog << std::endl;
+	}
+
+	m_ShaderProgram = shaderProgram;
+	glDeleteShader(vertex);
+	glDeleteShader(fragment);
+
+	return 0;
+}
+
+void Onion::OpenGLGraphicsManager::InitVB()
+{
+	float vertices[] = {
+		0.5f,  0.5f, 0.0f,  // top right
+		0.5f, -0.5f, 0.0f,  // bottom right
+		-0.5f, -0.5f, 0.0f,  // bottom left
+		-0.5f,  0.5f, 0.0f   // top left 
+	};
+
+	unsigned int indices[] = {  // note that we start from 0!
+		0, 1, 3,  // first Triangle
+		1, 2, 3   // second Triangle
+	};
+
+	glGenVertexArrays(1, &m_VAO);
+	glGenBuffers(1, &m_VBO);
+	glGenBuffers(1, &m_EBO);
+
+	glBindVertexArray(m_VAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	
+
+}
+
+void Onion::OpenGLGraphicsManager::Render()
+{
+	GLenum ret = GL_NO_ERROR;
+
+	glUseProgram(m_ShaderProgram);
+	glBindVertexArray(m_VAO);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	glFlush();
+}
+
