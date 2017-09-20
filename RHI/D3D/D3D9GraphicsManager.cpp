@@ -1,6 +1,7 @@
 #include "D3D9GraphicsManager.hpp"
 #include "WindowsApplication.hpp"
 #include <mmsystem.h>
+#include <string>
 using namespace Onion;
 namespace Onion
 {
@@ -24,13 +25,13 @@ namespace Onion
 		DWORD color;
 	};
 	// Our custom FVF, which describes our custom vertex structure
-#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZ|D3DFVF_DIFFUSE)
+#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZ)
 
 }
 
 Onion::D3D9GraphicsManager::D3D9GraphicsManager():
     m_pD3D(nullptr),
-    m_pD3DDevice(nullptr)
+    m_pDevice(nullptr)
 {
 
 }
@@ -84,59 +85,120 @@ HRESULT Onion::D3D9GraphicsManager::InitD3D()
 
     if( FAILED( m_pD3D->CreateDevice( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hWnd,
         D3DCREATE_SOFTWARE_VERTEXPROCESSING,
-        &d3dpp, &m_pD3DDevice ) ) )
+        &d3dpp, &m_pDevice ) ) )
         {
         return E_FAIL;
     }
 
-	m_pD3DDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-	m_pD3DDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
+	m_pDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+	m_pDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
 
-    return InitGeometry();
+    return InitShader();
 }
 
 HRESULT Onion::D3D9GraphicsManager::InitVB()
 {
-	// Initialize three vertices for rendering a triangle
-	CUSTOMVERTEX vertices[] =
-	{
-		{ -1.0f,-1.0f, 0.0f, 0xffff0000, },
-		{ 1.0f,-1.0f, 0.0f, 0xff0000ff, },
-		{ 0.0f, 1.0f, 0.0f, 0xffffffff, },
-	};
+	HRESULT hr = S_OK;
+	// Vertex Buffer
+	{	
+		D3DXVECTOR3 vertices[] =
+		{
+			{ 0.5f,  0.5f, 0.0f },  // top right
+			{ 0.5f, -0.5f, 0.0f },  // bottom right
+			{ -0.5f, -0.5f, 0.0f },  // bottom left
+			{ -0.5f,  0.5f, 0.0f }   // top left 
+		};
+		hr = m_pDevice->CreateVertexBuffer(4 * sizeof(D3DXVECTOR3), 0, 0, D3DPOOL_DEFAULT, &m_pVB, NULL);
+		if (FAILED(hr)) return hr;
 
-	if (FAILED(m_pD3DDevice->CreateVertexBuffer(3 * sizeof(CUSTOMVERTEX),
-		0,
-		D3DFVF_CUSTOMVERTEX,
-		D3DPOOL_DEFAULT,
-		&m_pVB, NULL)))
-	{
-		return E_FAIL;
+		D3DXVECTOR2* pVertices = nullptr;
+		hr = m_pVB->Lock(0, 0, (void**)&pVertices, 0);
+		if (FAILED(hr)) return hr;
+		memcpy_s(pVertices, sizeof(vertices), vertices, sizeof(vertices));
+		hr = m_pVB->Unlock();
+		if (FAILED(hr)) return hr;
 	}
 
-	VOID* pVertices = nullptr;
-	if (FAILED(m_pVB->Lock(0, sizeof(vertices), (void**)&pVertices, 0)))
-		return E_FAIL;
-	memcpy(pVertices, vertices, sizeof(vertices));
-	m_pVB->Unlock();
+	// Index Buffer
+	{
+		WORD indices[] = {  // note that we start from 0!
+			0, 1, 3,  // first Triangle
+			1, 2, 3   // second Triangle
+		};
+		hr = m_pDevice->CreateIndexBuffer(6 * sizeof(WORD), 0, D3DFMT_INDEX16, D3DPOOL_DEFAULT, &m_pIB, NULL);
+		if (FAILED(hr)) return hr;
+		WORD* pIndices = NULL;
+		hr = m_pIB->Lock(0, sizeof(indices), (void**)&pIndices, 0);
+		if (FAILED(hr)) return hr;
+		memcpy_s(pIndices, sizeof(indices), indices, sizeof(indices));
+		hr = m_pIB->Unlock();
+		if (FAILED(hr)) return hr;
+	}
+
 	return S_OK;
 }
 
-HRESULT Onion::D3D9GraphicsManager::InitGeometry()
+HRESULT Onion::D3D9GraphicsManager::InitShader()
 {
 	HRESULT hr = S_OK;
+	LPD3DXBUFFER pError = nullptr;
+	LPD3DXBUFFER pCode = nullptr;
+	char errInfo[256] = { 0 };
+	// Vertex Declaration
+	{
+		D3DVERTEXELEMENT9  decl[] =
+		{
+			{ 0,0,D3DDECLTYPE_FLOAT3,D3DDECLMETHOD_DEFAULT ,D3DDECLUSAGE_POSITION ,0 },
+			D3DDECL_END()
+		};
 
-	m_pEffect = nullptr;
-	m_pCode = nullptr;
-	hr = D3DXCreateEffectFromFile(m_pD3DDevice, "Assets\\Shader\\diffuse.fx", NULL, NULL, 0, NULL, &m_pEffect, &m_pCode);
-	if (FAILED(hr)) {
-		LPVOID pBufErr = m_pCode->GetBufferPointer();
-		char* ErrInfo = (char*)pBufErr;
-		m_pCode->Release();
-		return hr;
+		hr = m_pDevice->CreateVertexDeclaration(decl, &m_pVertexDeclaration);
+		if (FAILED(hr)) {
+			return hr;
+		}
+
 	}
-	hr = m_pEffect->SetTechnique("Default");
-	if (FAILED(hr)) return hr;
+
+	// Vertex Shader
+	{
+		std::string vsPath = R"(Assets\Shader\diffuse_vs.hlsl)";
+		hr = D3DXCompileShaderFromFile(vsPath.c_str(), NULL, NULL, "VSMain", "vs_2_0", D3DXSHADER_DEBUG, &pCode, &pError, &m_pConstantTable);
+		if (FAILED(hr)) {			
+			if (pError) {		
+				strcpy(errInfo, (char*)pError->GetBufferPointer());
+			}
+			SafeRelease(&pError);
+			SafeRelease(&pCode);
+			return hr;
+		}
+
+		hr = m_pDevice->CreateVertexShader((DWORD*)pCode->GetBufferPointer(), &m_pVertexShader);
+		SafeRelease(&pError);
+		SafeRelease(&pCode);
+		if (FAILED(hr)) {
+			return hr;
+		}
+	}
+
+	// Pixel Shader
+	{
+		std::string psPath = R"(Assets\Shader\diffuse_ps.hlsl)";
+		hr = D3DXCompileShaderFromFile(psPath.c_str(), NULL, NULL, "PSMain", "ps_2_0", D3DXSHADER_DEBUG, &pCode, &pError, NULL);
+		if (FAILED(hr)) {
+			if (pError) {
+				strcpy(errInfo, (char*)pError->GetBufferPointer());
+			}
+			SafeRelease(&pError);
+			SafeRelease(&pCode);
+			return hr;
+		}
+		hr = m_pDevice->CreatePixelShader((DWORD*)pCode->GetBufferPointer(), &m_pPixelShader);
+		SafeRelease(&pError);
+		SafeRelease(&pCode);
+		if (FAILED(hr)) {
+			return hr;
+		}
+	}
 	return InitVB();
 }
 
@@ -176,9 +238,9 @@ void Onion::D3D9GraphicsManager::SetupMatrices()
 	//m_pD3DDevice->SetTransform(D3DTS_PROJECTION, &matProj);
 
 	D3DXMATRIXA16 wvp = matWorld * matView * matProj;
-	D3DXHANDLE WVPMatrixHandle = m_pEffect->GetParameterByName(0, "g_mvp");
+	//D3DXHANDLE WVPMatrixHandle = m_pEffect->GetParameterByName(0, "g_mvp");
 
-	HRESULT hr = m_pEffect->SetMatrix(WVPMatrixHandle, &wvp);
+	//HRESULT hr = m_pEffect->SetMatrix(WVPMatrixHandle, &wvp);
 
 
 }
@@ -187,38 +249,33 @@ void Onion::D3D9GraphicsManager::SetupMatrices()
 
 void Onion::D3D9GraphicsManager::ClearupD3D()
 {
-	SafeRelease(&m_pCode);
-	SafeRelease(&m_pEffect);
+	SafeRelease(&m_pPixelShader);
+	SafeRelease(&m_pVertexShader);
+	SafeRelease(&m_pVertexDeclaration);
 	SafeRelease(&m_pVB);
-    SafeRelease(&m_pD3DDevice);
+    SafeRelease(&m_pDevice);
     SafeRelease(&m_pD3D);
 }
 
 void Onion::D3D9GraphicsManager::Render()
 {
 
-	if (m_pD3DDevice == nullptr) return;
-	m_pD3DDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+	if (m_pDevice == nullptr) return;
+	m_pDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
 
 	HRESULT hr = S_OK;
-    if( SUCCEEDED( m_pD3DDevice->BeginScene() ) )
+    if( SUCCEEDED( m_pDevice->BeginScene() ) )
     {
-		hr = m_pD3DDevice->SetStreamSource(0, m_pVB, 0, sizeof(CUSTOMVERTEX));
-		hr = m_pD3DDevice->SetFVF(D3DFVF_CUSTOMVERTEX);
-		SetupMatrices();
-		UINT iPass=0, passCount=0;
-		HRESULT hr = m_pEffect->Begin(&passCount, 0);
-
-		for (iPass = 0;iPass<passCount;iPass++)
-		{
-			hr = m_pEffect->BeginPass(iPass);
-			hr = m_pD3DDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 1);
-			hr = m_pEffect->EndPass();
-		}
-
-        m_pD3DDevice->EndScene();
+		hr = m_pDevice->SetVertexDeclaration(m_pVertexDeclaration);
+		hr = m_pDevice->SetVertexShader(m_pVertexShader);
+		hr = m_pDevice->SetPixelShader(m_pPixelShader);
+		hr = m_pDevice->SetStreamSource(0, m_pVB, 0, sizeof(D3DXVECTOR3));
+		hr = m_pDevice->SetIndices(m_pIB);
+		hr = m_pDevice->SetFVF(D3DFVF_CUSTOMVERTEX);
+		hr = m_pDevice->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 6/3);
+        m_pDevice->EndScene();
     }
 
      // Present the backbuffer contents to the display
-    m_pD3DDevice->Present( NULL, NULL, NULL, NULL );
+    m_pDevice->Present( NULL, NULL, NULL, NULL );
 }
