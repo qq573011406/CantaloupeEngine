@@ -34,5 +34,8 @@
 # build
 build/
 
-#editor
+# editor
 .vscode/
+
+# External
+!External/**/*.*
