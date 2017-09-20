@@ -9,7 +9,7 @@
 
 using namespace Onion;
 namespace Onion {
-	GfxConfiguration config(8, 8, 8, 8, 32, 0, 0, 960, 540,L"OnionEngine (Windows opengl)");
+	GfxConfiguration config(8, 8, 8, 8, 32, 0, 0, 960, 540,L"OnionEngine (Windows opengl-es 2.0)");
 	IApplication* g_pApp                = static_cast<IApplication*>(new OpenGLESApplication(config));
     GraphicsManager* g_pGraphicsManager = static_cast<GraphicsManager*>(new OpenGLESGraphicsManager);
     MemoryManager*   g_pMemoryManager   = static_cast<MemoryManager*>(new MemoryManager);
