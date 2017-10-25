@@ -39,3 +39,6 @@ build/
 
 # External
 !External/**/*.*
+
+# Tools
+!Tools/**/*.*
